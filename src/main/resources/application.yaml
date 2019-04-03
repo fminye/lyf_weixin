@@ -5,6 +5,6 @@ spring.datasource:
    # serverTimezone=CST 指定服务器的时区，CST（China Standard Time）
    url: jdbc:mysql://127.0.0.1:3306/lyf?useSSL=false&serverTimezone=CST&allowPublicKeyRetrieval=true
    username: lyf
-   password: 1234
+   password: Root1234
 
 server.port: 8066
