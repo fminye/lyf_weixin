@@ -1,6 +1,16 @@
 package org.fkjava.weixin.controller;
 
+import javax.xml.bind.JAXB;
+
+import org.fkjava.weixin.domain.InMessage;
+import org.fkjava.weixin.service.MessageService;
+import org.fkjava.weixin.service.MessageTypeRegister;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -10,6 +20,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController // 基于RESTful风格的WEB服务的控制器
 @RequestMapping("/lyf/wexin/reciver") // 访问哪个路径的时候，被此控制器处理
 public class MessageReceiverController {
+
+	// 自动从Spring的容器里面获取一个消息服务出来，用于处理转换后的消息。现在还未实现消息的处理。
+	// 能够自动根据接口和实现的关系，自动把合适类型的对象放进来。
+	@Autowired
+	private MessageService messageService;
+
+	private static final Logger LOG = LoggerFactory.getLogger(MessageReceiverController.class);
 
 	// 必须要有Handler方法才不会出现404
 	// Handler方法就是用来处理各种请求的操作、入口
@@ -27,5 +44,44 @@ public class MessageReceiverController {
 		// 加密的以后的内容，如果跟signature相同，表示验证通过
 
 		return echostr;
+	}
+
+	@PostMapping
+	public String receive(//
+			@RequestParam(value = "signature", required = false) String signature, //
+			@RequestParam(value = "timestamp", required = false) String timestamp, //
+			@RequestParam(value = "nonce", required = false) String nonce, //
+			// @RequestBody 表示请求体
+			@RequestBody String xml//
+	) {
+		// 把收到的请求消息、请求参数全部打印出来
+		// 使用日志记录器打印可以非常方便输出日期、时间和位置，并且可以根据日志级别灵活过滤需要的信息。
+		LOG.debug("\n收到请求参数\n"//
+				+ "    signature : {}\n"// 大括号是一个占位符，需要后面继续传入实际的参数
+				+ "    timestamp : {}\n"//
+				+ "    nonce : {}\n"//
+				+ "收到的请求内容\n{}\n"//
+				, signature, timestamp, nonce, xml);
+
+//		if(xml.indexOf("<MsgType><![CDATA[event]]></MsgType>")>0) {
+//			// 事件
+//		}else if(xml.indexOf("<MsgType><![CDATA[location]]></MsgType>")>0) {
+//			// 位置
+//		}//......
+
+		// 截取XML字符串里面的消息类型
+		String type = xml.substring(xml.indexOf("<MsgType><![CDATA[") + 18);
+		type = type.substring(0, type.indexOf("]]></MsgType>"));
+
+		// 根据消息类型，找到对应的Java类型
+		Class<? extends InMessage> cla = MessageTypeRegister.getClass(type);
+
+		// 使用JAXB的API完成消息转换
+		InMessage inMessage = JAXB.unmarshal(xml, cla);
+
+		// 后面就调用业务逻辑层负责处理消息
+		this.messageService.onMessage(inMessage);
+
+		return "success";
 	}
 }
