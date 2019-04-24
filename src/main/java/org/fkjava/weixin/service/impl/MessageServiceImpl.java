@@ -29,8 +29,13 @@ public class MessageServiceImpl implements MessageService {
 		// 不同的消息由于处理方式不同，所以建议放入不同的通道中，队列里面可以有近乎无数的通道。
 		// 如果多人共享一个服务器，还需要在通道前面增加一个特征。kemao_3_就是特征。
 		// msg.getMsgType()把不同类型的消息放入不同通道。
-		inMessageTemplate.convertAndSend("lyf_weixin" + msg.getMsgType(), msg);
+		try {
+			inMessageTemplate.convertAndSend("kemao_3_" + msg.getMsgType(), msg);
+		} catch (Exception e) {
+			LOG.error("把转换的消息放入队列中出现问题：" + e.getLocalizedMessage(), e);
+		}
 
+		LOG.trace("转换后的消息对象已经放入队列中");
 		// 返回的信息先不管
 		return null;
 	}
